@@ -1,0 +1,16 @@
+%istart=findcells(BEAMLINE,'Name','ENDINJ');% This is the start point for the old 'nominal' optics config
+istart=findcells(BEAMLINE,'Name','LH10BEG');% This is the new start point for the Lucretia sims, it's where Glen dumps the GPT output
+iLH=findcells(BEAMLINE,'Name','HTRUNDF');
+tcavS10=findcells(BEAMLINE,'Name','TCY10490');   % tcav, split into 2
+profMontcavS10 = findcells(BEAMLINE,'Name','PR10711');
+iL1A=findcells(BEAMLINE,'Name','BEGL1F');
+BC11END=findcells(BEAMLINE,'Name','BC11CEND'); % end of BC11
+begBC14 =findcells(BEAMLINE,'Name','BEGBC14_1');
+BC14END =findcells(BEAMLINE,'Name','ENDBC14_2');
+iL3B=findcells(BEAMLINE,'Name','ENDL3F_2'); % end of L3
+BEGBC20 =findcells(BEAMLINE,'Name','BEGBC20');
+BC20END =findcells(BEAMLINE,'Name','ENDBC20');
+iFF=findcells(BEAMLINE,'Name','ENDBC20'); % start of FFS
+PENT =findcells(BEAMLINE,'Name','PENT');
+PDUMP =findcells(BEAMLINE,'Name','PDUMP');
+QM10631=findcells(BEAMLINE,'Name','QM10631'); % start of FFS
