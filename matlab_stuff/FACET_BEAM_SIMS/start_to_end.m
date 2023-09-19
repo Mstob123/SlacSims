@@ -80,6 +80,28 @@ Luc2FBPICtxt(beamOut,fileOutd)
 Luc2FBPICtxt(beamOut,fileOutw)
 
 
+quadRange = linspace(-30,-36,10);
+data = struct();
+
+folder = 'fbOut';
+
+files = dir(folder);
+files = files(~[files.isdir]);
+
+for ii = 1:numel(files)
+    beam = FBPIC_ReadElectron(folder, files(jj).name,'electrons_witness');
+    lucBeam = YABP_FBPIC2YABP(beam);
+    data.beams(ii) = lucBeam;
+end
+
+beam = data.beams(end);
+
+
+
+[quads,diags] = size(data.beams);
+
+
+
 %{
 conda_environment = 'masontest'; % Replace with your Conda environment name
 python_script = '/home/mstobbe/FBPIC_Sims/pwaSim.py'; % Replace with the path to your Python script
