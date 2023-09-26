@@ -1,47 +1,62 @@
-clear all;
+function data = start_to_end(match_optimize, p_interact, plasma_density, L2_phase_offset)
+
+close all;
+data = struct();
 
 c0=299792458;
 mE=9.1094e-31;
 qE=1.6022e-19;
 e0 = 8.8542e-12;
 
-pDens = 1e16*1e6;
+%pDens = 1e16*1e6;
+pDens = plasma_density;
 
-load '/Users/mwstobbe/Documents/SlacSims/matlab_stuff/facet2-lattice-master/Lucretia/models/FACET2e/FACET2e.mat'
+load './matlab_stuff/facet2-lattice-master/Lucretia/models/FACET2e/FACET2e.mat'
 
-addpath('FACET_BEAM_SIMS/simulationHelperFunctions')
+%addpath('./matlab_stuff/FACET_BEAM_SIMS/simulationHelperFunctions')
 
-oneBunch = load('/Users/mwstobbe/Documents/SlacSims/matlab_stuff/facet2-lattice-master/Lucretia/beams/FACET2e_op.mat');
-twoBunch = load('/Users/mwstobbe/Documents/SlacSims/matlab_stuff/facet2-lattice-master/Lucretia/beams/FACET2e_2bunch_op.mat');
+oneBunch = load('./matlab_stuff/facet2-lattice-master/Lucretia/beams/FACET2e_op.mat');
+twoBunch = load('./matlab_stuff/facet2-lattice-master/Lucretia/beams/FACET2e_2bunch_op.mat');
 
 initialBeam = oneBunch.Beam;
 initialParams = oneBunch.Initial;
 
+data(1).beam = initialBeam;
 twoBunchBeam = twoBunch.Beam;
 
-simparams = struct('P1',[+1 0.0], 'P2',[-1.65 0], 'V1',[5e-2 0.0], 'V2',[3e-2 0.0], ...
-              'qi',[0 0.0], 'dx',[0 0], 'dy',[0 0],'Elaser',[0e-3 0]);
+%simparams = struct('P1',[+1 0.0], 'P2',[-1.65 0], 'V1',[5e-2 0.0], 'V2',[3e-2 0.0], ...
+  %  'qi',[0 0.0], 'dx',[0 0], 'dy',[0 0],'Elaser',[0e-3 0]);
 
-vals = structfun(@samplevals,simparams,'UniformOutput',false);
+%vals = structfun(@samplevals,simparams,'UniformOutput',false);
+%disp(vals)
+
+vals = struct('P1',1, 'P2',-1.65+L2_phase_offset, 'V1',5e-2, 'V2',3e-2, ...
+    'qi',0, 'dx',0 , 'dy',0 ,'Elaser',0e-3);
+
+
 
 FFstart = findcells(BEAMLINE,'Name','BEGFF20')
 FFend = findcells(BEAMLINE,'Name','ENDFF20')
 PENT = findcells(BEAMLINE,'Name','PENT')
+PEXT = findcells(BEAMLINE,'Name','PEXT')
+DTOTR = findcells(BEAMLINE,'Name','DTOTR')
 
 beamImage(initialBeam)
 
 tic
-[data, BEAMLINE] = singleBunchTransport(vals,FFstart,initialBeam,BEAMLINE);
+[t_data, BEAMLINE] = singleBunchTransport(vals,FFstart,initialBeam,BEAMLINE);
 toc
 
-beam = data(end).beam;
+for ii = 1:length(t_data)
+    data(ii+1).beam = t_data(ii).beam;
+end
+
+beam = t_data(end).beam;
 beamImage(beam)
 
-[betax,betay] = findBeta(beam)
+[betax,betay] = findBeta(beam);
 
-optimize = 1;
-
-if (optimize == true)
+if (match_optimize == true)
     quadEle = findcells(BEAMLINE,'Class','QUAD', FFstart, FFend);
 
     gamavg = mean(beam.Bunch.x(6,:)*1000/0.511);
@@ -63,53 +78,70 @@ if (optimize == true)
         BEAMLINE{quadEle(ii+1)}.B = x((ii+1)/2);
     end
 
-    [~,beamOut] = TrackThru(FFstart,PENT,beam,1,1);
+    [~,beam] = TrackThru(FFstart,PENT,beam,1,1);
 
 else
 
-    [~,beamOut] = TrackThru(FFstart,PENT,beam,1,1);
+    [~,beam] = TrackThru(FFstart,PENT,beam,1,1);
 
 end
 
-beamImage(beamOut)
+data(length(data)+1).beam = beam;
+beamImage(beam);
 
-fileOutd = '/Users/mwstobbe/Documents/SlacSims/matlab_stuff/driver_test.txt';
-fileOutw = '/Users/mwstobbe/Documents/SlacSims/matlab_stuff/witness_test.txt';
+fileOutd = './matlab_stuff/driver_test.txt';
+fileOutw = './matlab_stuff/witness_test.txt';
 
-Luc2FBPICtxt(beamOut,fileOutd)
-Luc2FBPICtxt(beamOut,fileOutw)
+Luc2FBPICtxt(beam,fileOutd)
+Luc2FBPICtxt(beam,fileOutw)
 
+if (p_interact == true)
+    conda_environment = 'Facet_Simulations'; % Replace with your Conda environment name
+    python_script = '.\python_stuff\pwaSim.py'; % Replace with the path to your Python script
+    arguments = [fileOutd,' ',fileOutw];
+    command = ['C:\Users\Mason\anaconda3\_conda run -n ', conda_environment, ' ', 'python '  python_script, ' ', arguments];
 
-quadRange = linspace(-30,-36,10);
-data = struct();
+    [status, result] = system(command);
+    disp(result)
 
-folder = 'fbOut';
+    quadRange = linspace(-30,-36,10);
 
-files = dir(folder);
-files = files(~[files.isdir]);
+    folder = './diags/hdf5/';
+    addpath(folder)
 
-for ii = 1:numel(files)
-    beam = FBPIC_ReadElectron(folder, files(jj).name,'electrons_witness');
-    lucBeam = YABP_FBPIC2YABP(beam);
-    data.beams(ii) = lucBeam;
+    files = dir(folder);
+    files = files(~[files.isdir]);
+
+    len = length(data);
+
+    for ii = 1:numel(files)
+        diag_beam = FBPIC_ReadElectron(folder, files(ii).name,'electrons_witness');
+        lucBeam = YABP_FBPIC2YABP(diag_beam);
+        data(ii+len).beam = lucBeam;
+    end
+
+    beam = data(end).beam;
+
+    
+else
+
+    
+    %beam.Bunch.x(:,5) = beamOut.Bunch.x(:,5) + pLength;
+
+    %data(length(data)+1).beam = beam;
+
 end
 
-beam = data.beams(end);
+beam = trackThru_Spectrometer(beam,initialParams,PEXT,DTOTR,mean(beam.Bunch.x(6,:)));
+data(length(data)+1).beam = beam;
 
 
+%beamImage(beam)
 
-[quads,diags] = size(data.beams);
+save('data.mat','data')
 
 
-
-%{
-conda_environment = 'masontest'; % Replace with your Conda environment name
-python_script = '/home/mstobbe/FBPIC_Sims/pwaSim.py'; % Replace with the path to your Python script
-arguments = [fileOutd,' ',fileOutw] % Replace with your desired command line arguments
-
-command = sprintf('conda run -pwd /home/mstobbe/FBPIC_Sims/ -n %s python3.11 %s %s', conda_environment, python_script, arguments);
-system(command);
-%}
+end
 
 
 %% Functions
@@ -136,37 +168,7 @@ function match = betaMin(BEAMLINE, beamIn, quadEle, start, fin, betaMatch, v)
 
 end
 
-function [betax,betay] = findBeta(beam)
 
-    x = beam.Bunch.x(1,:);
-    xPrime = beam.Bunch.x(2,:);
-
-    x_xPrime = x.*xPrime;
-
-    x2_mean = mean(x.^2)-mean(x)^2;
-    xPrime2_mean = mean(xPrime.^2)-mean(xPrime)^2;
-    x_xPrime_mean2 = (mean(x_xPrime)-mean(x)*mean(xPrime))^2;
-
-    emitx = sqrt(x2_mean*xPrime2_mean-x_xPrime_mean2)*mean(beam.Bunch.x(6,:)*1000/0.511);
-    stdx = std(x);
-
-    betax = stdx^2/emitx;
-
-    y = beam.Bunch.x(3,:);
-    yPrime = beam.Bunch.x(4,:);
-
-    y_yPrime = y.*yPrime;
-
-    y2_mean = mean(y.^2)-mean(y)^2;
-    yPrime2_mean = mean(yPrime.^2)-mean(yPrime)^2;
-    y_yPrime_mean2 = (mean(y_yPrime)-mean(y)*mean(yPrime))^2;
-
-    emity = sqrt(y2_mean*yPrime2_mean-y_yPrime_mean2)*mean(beam.Bunch.x(6,:)*1000/0.511);
-    stdy = std(y);
-
-    betay = stdy^2/emity;
-
-end
 
 
 
