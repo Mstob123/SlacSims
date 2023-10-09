@@ -1,4 +1,4 @@
-def run_pwa_sim(dFile, wFile, num_diags, z_off = -200e-6):
+def run_pwa_sim(pDens, dFile, wFile, num_diags, z_offd = 0, z_offw = 0):
     import numpy as np
     from scipy.constants import c, e, m_e
 
@@ -43,7 +43,11 @@ def run_pwa_sim(dFile, wFile, num_diags, z_off = -200e-6):
     p_zmin = 120.e-6  # Position of the beginning of the plasma (meters)
     p_zmax = 20.e-3 # Position of the end of the plasma (meters)
     p_rmax = 400.e-6  # Maximal radial position of the plasma (meters)
-    n_e = 1.e16*1.e6 # Density (electrons.meters^-3)
+
+    #n_e = 1.e16*1.e6 # Density (electrons.meters^-3)
+    n_e = pDens
+
+
     p_nz = 2         # Number of particles per cell along z
     p_nr = 2         # Number of particles per cell along r
     p_nt = 4         # Number of particles per cell along theta
@@ -120,18 +124,24 @@ def run_pwa_sim(dFile, wFile, num_diags, z_off = -200e-6):
     # Load initial fields
     # Create a Gaussian laser profile
 
-    macroNd = 500000
+    with open(dFile) as file:
+        macroNd = len(file.readlines())
+
+    with open(wFile) as file:
+        macroNw = len(file.readlines())
+
+    
     chargeMagd = 2*10**-15
     weightd = chargeMagd/e
     massd = weightd*m_e
 
-    macroNw = 500000
-    chargeMagw = 2*10**-16
+    
+    chargeMagw = 2*10**-15
     weightw = chargeMagw/e
     massw = weightw*m_e
 
-    dbunch = add_particle_bunch_file(sim, -e, m_e, dFile, macroNd*weightd) 
-    wbunch = add_particle_bunch_file(sim, -e, m_e, wFile, macroNw*weightw,z_off= z_off)
+    dbunch = add_particle_bunch_file(sim, -e, m_e, dFile, macroNd*weightd, z_off = z_offd) 
+    wbunch = add_particle_bunch_file(sim, -e, m_e, wFile, macroNw*weightw,z_off= z_offw)
 
     
     #bunch = add_particle_bunch_openPMD(sim, -e, m_e, eFile)
@@ -178,9 +188,10 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         dr = sys.argv[1]
         wt = sys.argv[2]
+        pDens = sys.argv[3]
     else:
         dr = '/home/mstobbe/FBPIC_Sims/drive_test.txt'
         wt = '/home/mstobbe/FBPIC_Sims/witness_test.txt'
 
-    run_pwa_sim(dr,wt,10,-180e-6)
+    run_pwa_sim(pDens, dr,wt,30,0,0)
 
