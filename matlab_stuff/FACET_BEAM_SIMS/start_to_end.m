@@ -34,12 +34,12 @@ vals = struct('P1',1, 'P2',-1.65+L2_phase_offset, 'V1',5e-2, 'V2',3e-2, ...
     'qi',0, 'dx',0 , 'dy',0 ,'Elaser',0e-3);
 
 
-
-FFstart = findcells(BEAMLINE,'Name','BEGFF20')
-FFend = findcells(BEAMLINE,'Name','ENDFF20')
-PENT = findcells(BEAMLINE,'Name','PENT')
-PEXT = findcells(BEAMLINE,'Name','PEXT')
-DTOTR = findcells(BEAMLINE,'Name','DTOTR')
+FFstart = findcells(BEAMLINE,'Name','BEGFF20');
+FFend = findcells(BEAMLINE,'Name','ENDFF20');
+eleFilg = findcells(BEAMLINE, 'Name', 'eleFILG');
+PENT = findcells(BEAMLINE,'Name','PENT');
+PEXT = findcells(BEAMLINE,'Name','PEXT');
+DTOTR = findcells(BEAMLINE,'Name','DTOTR');
 
 beamImage(initialBeam)
 
@@ -52,17 +52,32 @@ for ii = 1:length(t_data)
 end
 
 beam = t_data(end).beam;
-beamImage(beam)
+f = figure('Name', 'Before Collimate Transverse');
+f2 = figure('Name', 'Before Collimate Longitudinal');
 
-[betax,betay] = findBeta(beam);
+beamImage(beam,[],[],[],[],[],[f, f2])
+
+e_mean = mean(beam.Bunch.x(6,:))
+[beam_drive,beam_wit] = collimate(beam, e_mean,0.003*e_mean);
+
+f3 = figure('Name', 'Witness Transverse');
+f4 = figure('Name', 'Witness Longitudinal');
+
+f5 = figure('Name', 'Drive Transverse');
+f6 = figure('Name', 'Drive Longitudinal');
+
+beamImage(beam_wit,[],[],[],[],[],[f3, f4])
+beamImage(beam_drive,[],[],[],[],[],[f5, f6])
+
+%[betax,betay] = findBeta(beam_wit)
 
 if (match_optimize == true)
     quadEle = findcells(BEAMLINE,'Class','QUAD', FFstart, FFend);
 
-    gamavg = mean(beam.Bunch.x(6,:)*1000/0.511);
-    betaMatch = c0/qE*sqrt(e0*mE)*sqrt(2*gamavg/pDens)
+    gamavg = mean(beam_wit.Bunch.x(6,:)*1000/0.511);
+    betaMatch = c0/qE*sqrt(e0*mE)*sqrt(2*gamavg/pDens);
 
-    wrappedBetaMin = @(v) betaMin(BEAMLINE,beam,quadEle,FFstart,PENT,betaMatch,v);
+    wrappedBetaMin = @(v) betaMin(BEAMLINE,beam_wit,quadEle,FFstart,PENT,betaMatch,v);
 
     options = optimset('Display','iter');
     for ii = 1:length(quadEle)/2
@@ -78,27 +93,30 @@ if (match_optimize == true)
         BEAMLINE{quadEle(ii+1)}.B = x((ii+1)/2);
     end
 
-    [~,beam] = TrackThru(FFstart,PENT,beam,1,1);
+    [~,beam_wit] = TrackThru(FFstart,PENT,beam_wit,1,1);
+    [~,beam_drive] = TrackThru(FFstart,PENT,beam_drive,1,1);
 
 else
 
-    [~,beam] = TrackThru(FFstart,PENT,beam,1,1);
+    [~,beam_wit] = TrackThru(FFstart,PENT,beam_wit,1,1);
+    [~,beam_drive] = TrackThru(FFstart,PENT,beam_drive,1,1);
 
 end
 
-data(length(data)+1).beam = beam;
-beamImage(beam);
+data(length(data)+1).beam = beam_wit;
 
-fileOutd = './matlab_stuff/driver_test.txt';
-fileOutw = './matlab_stuff/witness_test.txt';
+fileOutd = './matlab_stuff/driver.txt';
+fileOutw = './matlab_stuff/witness.txt';
 
-Luc2FBPICtxt(beam,fileOutd)
-Luc2FBPICtxt(beam,fileOutw)
+Luc2FBPICtxt(beam_drive,fileOutd)
+Luc2FBPICtxt(beam_wit,fileOutw)
+
+ffff
 
 if (p_interact == true)
     conda_environment = 'Facet_Simulations'; % Replace with your Conda environment name
     python_script = '.\python_stuff\pwaSim.py'; % Replace with the path to your Python script
-    arguments = [fileOutd,' ',fileOutw];
+    arguments = [fileOutd,' ',fileOutw, ' ', num2str(pDens)];
     command = ['C:\Users\Mason\anaconda3\_conda run -n ', conda_environment, ' ', 'python '  python_script, ' ', arguments];
 
     [status, result] = system(command);
@@ -117,6 +135,7 @@ if (p_interact == true)
     for ii = 1:numel(files)
         diag_beam = FBPIC_ReadElectron(folder, files(ii).name,'electrons_witness');
         lucBeam = YABP_FBPIC2YABP(diag_beam);
+        lucBeam.BunchInterval = 1;
         data(ii+len).beam = lucBeam;
     end
 
@@ -167,6 +186,8 @@ function match = betaMin(BEAMLINE, beamIn, quadEle, start, fin, betaMatch, v)
     match = sqrt((betax-betaMatch)^2+(betay-betaMatch)^2);
 
 end
+
+
 
 
 
