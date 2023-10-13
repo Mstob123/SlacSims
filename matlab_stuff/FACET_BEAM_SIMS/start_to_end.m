@@ -122,7 +122,7 @@ if (p_interact == true)
     [status, result] = system(command);
     disp(result)
 
-    quadRange = linspace(-30,-36,10);
+    
 
     folder = './diags/hdf5/';
     addpath(folder)

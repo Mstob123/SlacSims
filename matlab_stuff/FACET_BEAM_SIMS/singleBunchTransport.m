@@ -27,7 +27,7 @@ ISRon=0; % 1= Incoherent Sync. Rad. on, 0= ISR off
 CSRon=0; % 1= Coherent Sync. Rad. on, 0= CSR off
 LSCon=0; % 1= Longitudinal space charge on, 0= LSC off
 % Decimate beam?
-decBeam=100; % use integer>1 
+decBeam=1; % use integer>1 
              
 % -- Tracking options
 % Define indices

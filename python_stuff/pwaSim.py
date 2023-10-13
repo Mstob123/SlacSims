@@ -30,7 +30,7 @@ def run_pwa_sim(pDens, dFile, wFile, num_diags, z_offd = 0, z_offw = 0):
 
 # The simulation box
     Nz = 800         # Number of gridpoints along z
-    zmax = 110.e-6    # Right end of the simulation box (meters)
+    zmax = 300.e-6    # Right end of the simulation box (meters)
     zmin = -300.e-6   # Left end of the simulation box (meters)
     Nr = 100          # Number of gridpoints along r
     rmax = 350.e-6    # Length of the box along r (meters)
@@ -190,8 +190,9 @@ if __name__ == '__main__':
         wt = sys.argv[2]
         pDens = sys.argv[3]
     else:
-        dr = '/home/mstobbe/FBPIC_Sims/drive_test.txt'
-        wt = '/home/mstobbe/FBPIC_Sims/witness_test.txt'
+        dr = './python_stuff/drive_test.txt'
+        wt = './python_stuff/witness_test.txt'
+        pDens = 8e15*1e6
 
     run_pwa_sim(pDens, dr,wt,30,0,0)
 
